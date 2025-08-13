@@ -12,7 +12,7 @@ import compression from 'compression';
 import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import got from 'got';
 import pino from 'pino';
 

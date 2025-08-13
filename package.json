@@ -1,9 +1,9 @@
 {
-  "name": "your-app",
+  "name": "trading-app",
   "version": "1.0.0",
-  "description": "A sample project using yahoo-finance2",
+  "description": "A sample trading app using yahoo-finance2",
   "main": "index.js",
-  "type": "commonjs", // 또는 "module" (ESM 사용 시)
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },

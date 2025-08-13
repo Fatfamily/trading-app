@@ -1,5 +1,5 @@
 # Multi-stage is overkill here; keep simple for Render
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Install tzdata for correct timestamps (optional)
 RUN apk add --no-cache tzdata

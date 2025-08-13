@@ -1,12 +1,17 @@
 {
-  "name": "stock-virtual-exchange",
+  "name": "your-app",
   "version": "1.0.0",
-  "type": "module",
+  "description": "A sample project using yahoo-finance2",
+  "main": "index.js",
+  "type": "commonjs", // 또는 "module" (ESM 사용 시)
   "scripts": {
-    "start": "node server.mjs"
+    "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "yahoo-finance2": "^3.23.0"
-  }
+    "yahoo-finance2": "^2.13.3"
+  },
+  "engines": {
+    "node": ">=18.20.4"
+  },
+  "license": "MIT"
 }

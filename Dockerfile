@@ -1,14 +1,11 @@
-# Build stage
-FROM maven:3.9.6-eclipse-temurin-17 AS build
-WORKDIR /build
-COPY backend/pom.xml ./
-COPY backend/src ./src
-RUN mvn -q -DskipTests package
-
-# Run stage
-FROM eclipse-temurin:17-jre
+# 1단계: 빌드
+FROM gradle:8.5-jdk17 AS builder
 WORKDIR /app
-COPY --from=build /build/target/trading-app.jar app.jar
-EXPOSE 8080
-ENV PORT=8080
-ENTRYPOINT ["sh","-c","java -jar app.jar --server.port=${PORT}"]
+COPY . .
+RUN ./gradlew bootJar --no-daemon
+
+# 2단계: 실행
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY --from=builder /app/build/libs/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

@@ -1,0 +1,12 @@
+{
+  "name": "stock-virtual-exchange",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "yahoo-finance2": "^3.23.0"
+  }
+}

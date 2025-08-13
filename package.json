@@ -1,7 +1,7 @@
 {
   "name": "trading-app",
   "version": "1.0.0",
-  "description": "A sample trading app using yahoo-finance2",
+  "description": "Trading app using yahoo-finance2",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -11,7 +11,7 @@
     "yahoo-finance2": "^2.13.3"
   },
   "engines": {
-    "node": ">=18.20.4"
+    "node": ">=18"
   },
   "license": "MIT"
 }

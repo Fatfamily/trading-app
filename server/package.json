@@ -1,0 +1,21 @@
+{
+  "name": "kr-virtual-exchange-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "NODE_ENV=development node index.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "got": "^13.0.0",
+    "morgan": "^1.10.0",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2"
+  }
+}

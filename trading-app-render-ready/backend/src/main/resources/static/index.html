@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>트레이딩 터미널 (Kiwoom-like)</title>
+  <!-- libs -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root{
+      --bg:#0b0f1a;
+      --panel:#0f1524;
+      --panel-2:#121a2e;
+      --line:#1b2440;
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+      --up:#ff4d4f;   /* KRX 스타일: 상승=빨강 */
+      --down:#1e90ff; /* 하락=파랑 */
+      --accent:#ff8a00;
+      --green:#2ecc71;
+      --red:#ff4d4f;
+      --blue:#1e90ff;
+      --shadow: 0 6px 18px rgba(0,0,0,.35);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.35 system-ui,Segoe UI,Apple SD Gothic Neo,Pretendard,Roboto,Helvetica,Arial}
+    header{
+      height:56px;border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:14px;padding:0 16px;
+      background:linear-gradient(180deg,var(--panel),#0c1220);
+      position:sticky;top:0;z-index:5;
+    }
+    .brand{font-weight:700;letter-spacing:.3px}
+    .badge{font-size:12px;color:var(--muted);padding:4px 8px;border:1px solid var(--line);border-radius:999px}
+    .layout{
+      height:calc(100vh - 56px);
+      display:grid;
+      grid-template-columns: 280px 1fr 340px;
+      grid-template-rows: 1fr 230px;
+    }
+    aside.left{background:var(--panel);border-right:1px solid var(--line);overflow:auto}
+    aside.right{background:var(--panel);border-left:1px solid var(--line);padding:12px;display:grid;gap:12px}
+    main{display:grid;grid-template-rows:56px 1fr;background:var(--panel-2)}
+    .toolbar{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:0 12px}
+    .toolbar input{
+      background:#0b1224;border:1px solid var(--line);color:var(--text);
+      border-radius:10px;padding:8px 10px;outline:none;
+    }
+    .btn{
+      background:#0b1224;border:1px solid var(--line);color:var(--text);
+      padding:8px 10px;border-radius:10px;cursor:pointer
+    }
+    .btn:hover{filter:brightness(1.05)}
+    .panel{background:#0b1224;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .watchlist{padding:8px}
+    .watchlist table{width:100%;border-collapse:collapse}
+    .watchlist th,.watchlist td{padding:8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+    .watchlist th{color:var(--muted);font-weight:600;text-align:left;position:sticky;top:0;background:var(--panel)}
+    .sym{color:#cbd5e1}
+    .up{color:var(--up)}
+    .down{color:var(--down)}
+    .chart-wrap{position:relative;padding:10px}
+    .mini-stats{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;padding:8px 10px;color:#e2e8f0;display:flex;gap:12px}
+    .order-card{padding:12px;display:grid;gap:10px}
+    label{font-size:12px;color:var(--muted)}
+    input,select{width:100%;padding:10px 12px;background:#0b1224;border:1px solid var(--line);color:var(--text);border-radius:10px;outline:none}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .buy{background:rgba(255,77,79,.1);border:1px solid var(--up)}
+    .sell{background:rgba(30,144,255,.1);border:1px solid var(--down)}
+    .tabs{display:flex;gap:6px;padding:6px;border-bottom:1px solid var(--line)}
+    .tab{padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:#0b1224;color:var(--muted)}
+    .tab.active{color:var(--text);border-color:#2a355a}
+    .grid{padding:8px;overflow:auto}
+    .grid table{width:100%;border-collapse:collapse}
+    .grid th,.grid td{padding:8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;text-align:left}
+    footer{grid-column:1/4;border-top:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;padding:0 10px;color:var(--muted)}
+    .kbd{border:1px solid var(--line);border-bottom-color:#080c18;background:#0b1224;border-radius:6px;padding:2px 6px;color:#cbd5e1}
+    @media(max-width:1200px){
+      .layout{grid-template-columns: 1fr;grid-template-rows:auto auto auto}
+      aside.left, aside.right{display:none}
+      footer{grid-column:1}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">영웅문-스타일 터미널</div>
+    <span class="badge">실시간 1초 업데이트</span>
+    <span class="badge">Render-ready</span>
+    <div style="margin-left:auto;color:var(--muted)">상승은 <b style="color:var(--up)">빨강</b>, 하락은 <b style="color:var(--down)">파랑</b></div>
+  </header>
+
+  <div class="layout">
+    <aside class="left">
+      <div class="toolbar" style="border-bottom:1px solid var(--line)">
+        <input id="search" placeholder="종목/코드 검색 (예: 삼성전자, 005930)" style="flex:1">
+        <button class="btn" id="refresh">새로고침</button>
+      </div>
+      <div class="watchlist">
+        <table id="watch">
+          <thead>
+            <tr><th style="width:40%">종목</th><th style="width:30%">현재가</th><th style="width:30%">변동</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </aside>
+
+    <main>
+      <div class="toolbar">
+        <div id="sel-symbol" style="font-weight:700">—</div>
+        <div id="sel-name" style="color:var(--muted)"></div>
+        <div class="mini-stats" id="mini-stats" style="margin-left:auto"></div>
+      </div>
+      <div class="chart-wrap panel">
+        <div id="chart" style="height:100%;"></div>
+      </div>
+    </main>
+
+    <aside class="right">
+      <div class="panel order-card">
+        <div style="font-weight:700">주문</div>
+        <div class="row">
+          <div>
+            <label>종목</label>
+            <select id="order-symbol"></select>
+          </div>
+          <div>
+            <label>수량</label>
+            <input id="qty" type="number" min="1" value="1"/>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>가격(선택)</label>
+            <input id="limit" type="number" placeholder="시장가 주문은 비워두기"/>
+          </div>
+          <div>
+            <label>사이드</label>
+            <select id="side">
+              <option value="BUY">매수</option>
+              <option value="SELL">매도</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-buy" class="btn buy">매수</button>
+          <button id="btn-sell" class="btn sell">매도</button>
+        </div>
+        <div id="order-result" style="color:var(--muted)"></div>
+      </div>
+
+      <div class="panel" style="padding:12px">
+        <div style="font-weight:700;margin-bottom:8px">내 포트폴리오</div>
+        <div class="grid" id="portfolio"></div>
+      </div>
+    </aside>
+
+    <section class="panel" style="grid-column:1/4;display:grid;grid-template-rows:auto 1fr">
+      <div class="tabs">
+        <div class="tab active" data-tab="fills">체결</div>
+        <div class="tab" data-tab="positions">잔고</div>
+        <div class="tab" data-tab="logs">로그</div>
+      </div>
+      <div class="grid" id="tab-contents"></div>
+    </section>
+
+    <footer>
+      <span class="kbd">F1</span> 도움말
+      <span class="kbd">F2</span> 검색
+      <span class="kbd">F3</span> 매수
+      <span class="kbd">F4</span> 매도
+      <div style="margin-left:auto">© demo — 실제 키움/영웅문 UI의 1:1 복제 아님</div>
+    </footer>
+  </div>
+
+<script>
+(() => {
+  const state = {
+    symbols: [],
+    selected: null,
+    prices: {}, // symbol -> last price
+    candles: {}, // symbol -> array of {time, open, high, low, close}
+    tableRows: {},
+    fills: [],
+    logs: [],
+  };
+
+  // util
+  const fmt = (n) => n.toLocaleString('ko-KR');
+  const el = (sel) => document.querySelector(sel);
+  const ce = (tag, cls) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    return e;
+  };
+
+  // chart
+  const chartEl = document.getElementById('chart');
+  const chart = LightweightCharts.createChart(chartEl, {
+    layout: { background: { color: '#0f1524' }, textColor: '#e2e8f0' },
+    grid: { vertLines: { color: '#1b2440' }, horzLines: { color: '#1b2440' } },
+    timeScale: { timeVisible: true, secondsVisible: true },
+    rightPriceScale: { borderColor: '#1b2440' },
+    crosshair: { mode: 1 },
+  });
+  const lineSeries = chart.addLineSeries({ color: '#ff8a00', lineWidth: 2 });
+  const candleSeries = chart.addCandlestickSeries({
+    upColor: '#ff4d4f', borderUpColor:'#ff4d4f', wickUpColor:'#ff4d4f',
+    downColor: '#1e90ff', borderDownColor:'#1e90ff', wickDownColor:'#1e90ff',
+  });
+  function setSymbol(sym, name){
+    state.selected = sym;
+    el('#sel-symbol').textContent = sym;
+    el('#sel-name').textContent = name || '';
+    renderMiniStats(sym);
+    // feed data
+    candleSeries.setData(state.candles[sym] || []);
+    const line = (state.candles[sym]||[]).map(c => ({ time:c.time, value:c.close }));
+    lineSeries.setData(line);
+    chart.timeScale().fitContent();
+    el('#order-symbol').value = sym;
+  }
+
+  function pushTick(sym, px){
+    const ts = Math.floor(Date.now()/1000);
+    if(!state.candles[sym]) state.candles[sym] = [];
+    const arr = state.candles[sym];
+    const last = arr[arr.length-1];
+    if(!last || last.time !== ts){
+      // 새 1초 봉
+      arr.push({ time: ts, open: px, high: px, low: px, close: px });
+      // 최근 600초(10분) 유지
+      if(arr.length>600) arr.shift();
+    }else{
+      last.high = Math.max(last.high, px);
+      last.low = Math.min(last.low, px);
+      last.close = px;
+    }
+    // update series if current symbol
+    if(state.selected === sym){
+      candleSeries.update(arr[arr.length-1]);
+      lineSeries.update({ time: ts, value: px });
+      renderMiniStats(sym);
+    }
+  }
+
+  function renderMiniStats(sym){
+    const box = el('#mini-stats');
+    const px = state.prices[sym];
+    const hist = state.candles[sym] || [];
+    const prev = hist.length>1 ? hist[hist.length-2].close : px;
+    const chg = px - prev;
+    const pct = prev ? (chg/prev*100) : 0;
+    box.innerHTML = \`
+      <div>가격 <b class="\${chg>=0?'up':'down'}">\${fmt(px||0)}</b></div>
+      <div>변동 <b class="\${chg>=0?'up':'down'}">\${chg>=0?'+':''}\${fmt(chg||0)} (\${pct.toFixed(2)}%)</b></div>
+      <div>시각 \${new Date().toLocaleTimeString('ko-KR')}</div>
+    \`;
+  }
+
+  // watchlist
+  function upsertRow(q){
+    const tbody = document.querySelector('#watch tbody');
+    let row = state.tableRows[q.symbol];
+    const prev = state.prices[q.symbol];
+    state.prices[q.symbol] = q.price;
+    pushTick(q.symbol, q.price);
+
+    if(!row){
+      const tr = ce('tr');
+      const nameCell = ce('td','sym'); nameCell.textContent = q.name;
+      const pxCell = ce('td'); pxCell.textContent = fmt(q.price);
+      const chCell = ce('td');
+      tr.appendChild(nameCell); tr.appendChild(pxCell); tr.appendChild(chCell);
+      tr.onclick = () => setSymbol(q.symbol, q.name);
+      tbody.appendChild(tr);
+      row = state.tableRows[q.symbol] = { tr, nameCell, pxCell, chCell };
+    }else{
+      row.pxCell.textContent = fmt(q.price);
+    }
+    const diff = prev!=null ? q.price - prev : 0;
+    row.pxCell.className = diff>=0 ? 'up' : 'down';
+    row.chCell.textContent = (diff>=0?'+':'') + fmt(diff);
+    row.chCell.className = diff>=0 ? 'up' : 'down';
+
+    // 처음 심볼 선택
+    if(!state.selected) setSymbol(q.symbol, q.name);
+  }
+
+  // fetch helpers
+  async function getJSON(url){
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }
+  async function postJSON(url, body){
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json().catch(()=>({ok:true}));
+  }
+
+  // load initial symbols
+  async function loadSymbols(){
+    try{
+      const arr = await getJSON('/api/symbols');
+      state.symbols = arr;
+      const sel = el('#order-symbol');
+      sel.innerHTML = '';
+      arr.forEach(q => {
+        const opt = ce('option'); opt.value=q.symbol; opt.textContent = q.symbol+' '+q.name; sel.appendChild(opt);
+      });
+    }catch(e){ state.logs.push('심볼 로딩 실패: '+e.message); renderLogs(); }
+  }
+
+  // portfolio
+  async function loadPortfolio(){
+    try{
+      const p = await getJSON('/api/portfolio');
+      const div = el('#portfolio');
+      const tbl = ['<table><thead><tr><th>종목</th><th>수량</th><th>평단</th><th>PnL</th></tr></thead><tbody>'];
+      (p.positions||[]).forEach(pos => {
+        const last = state.prices[pos.symbol]||0;
+        const pnl = last*pos.qty - pos.avgCost*pos.qty;
+        tbl.push(\`<tr><td>\${pos.symbol}</td><td>\${fmt(pos.qty)}</td><td>\${fmt(pos.avgCost||0)}</td><td class="\${pnl>=0?'up':'down'}">\${fmt(Math.round(pnl))}</td></tr>\`);
+      });
+      tbl.push('</tbody></table>');
+      div.innerHTML = tbl.join('');
+    }catch(e){ state.logs.push('포트폴리오 로딩 실패: '+e.message); renderLogs(); }
+  }
+
+  function renderLogs(){
+    const box = el('#tab-contents');
+    if(state.activeTab === 'positions'){
+      // same as portfolio
+      box.innerHTML = el('#portfolio').innerHTML;
+      return;
+    }
+    if(state.activeTab === 'fills'){
+      if(state.fills.length===0){ box.innerHTML = '<div style="color:var(--muted)">체결 내역 없음</div>'; return; }
+      const rows = state.fills.map(f => \`<tr><td>\${f.ts}</td><td>\${f.symbol}</td><td>\${f.side}</td><td>\${fmt(f.qty)}</td><td>\${fmt(f.price)}</td></tr>\`);
+      box.innerHTML = '<table><thead><tr><th>시간</th><th>종목</th><th>사이드</th><th>수량</th><th>가격</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+      return;
+    }
+    // logs
+    const logs = state.logs.slice(-100).map(s => '<div>'+s+'</div>').join('');
+    box.innerHTML = logs || '<div style="color:var(--muted)">로그 없음</div>';
+  }
+
+  // order
+  async function sendOrder(side){
+    const symbol = el('#order-symbol').value;
+    const qty = parseInt(el('#qty').value||'1',10);
+    const price = el('#limit').value? parseInt(el('#limit').value,10): null;
+    try{
+      const res = await postJSON('/api/order', { symbol, side, qty, price });
+      el('#order-result').textContent = '주문 전송 완료';
+      state.logs.push(\`주문: \${side} \${symbol} \${qty} @ \${price??'시장가'}\`);
+      renderLogs();
+      // 체결 목록 가짜 추가
+      const px = state.prices[symbol]||price||0;
+      state.fills.push({ ts: new Date().toLocaleTimeString('ko-KR'), symbol, side, qty, price: px });
+    }catch(e){
+      el('#order-result').textContent = '주문 실패: '+e.message;
+      state.logs.push('주문 실패: '+e.message); renderLogs();
+    }
+  }
+
+  // tabs
+  state.activeTab = 'fills';
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      state.activeTab = t.dataset.tab;
+      renderLogs();
+    })
+  });
+
+  // search filter
+  el('#search').addEventListener('input', (e) => {
+    const term = e.target.value.trim();
+    for(const sym in state.tableRows){
+      const row = state.tableRows[sym];
+      const visible = !term || row.nameCell.textContent.includes(term) || sym.includes(term);
+      row.tr.style.display = visible ? '' : 'none';
+    }
+  });
+  el('#refresh').onclick = () => loadPortfolio();
+
+  // websocket connect + 1초 주기 tick 수신
+  function connectWS(){
+    const sock = new SockJS('/ws');
+    const ws = Stomp.over(sock);
+    ws.debug = () => {}; // 콘솔 소음 제거
+    ws.connect({}, () => {
+      state.logs.push('WS 연결됨');
+      ws.subscribe('/topic/quotes', (frame) => {
+        try{
+          const q = JSON.parse(frame.body);
+          upsertRow(q);
+        }catch(e){ state.logs.push('WS 파싱 실패: '+e.message); }
+      });
+    }, () => {
+      state.logs.push('WS 끊김 — 2초 후 재연결 시도'); setTimeout(connectWS, 2000);
+    });
+  }
+
+  // fallback: WS가 안 되면 1초 polling (Render 방화벽 대비)
+  let polling = null;
+  async function startPolling(){
+    if(polling) return;
+    polling = setInterval(async () => {
+      // 서버가 /api/symbols에서 현재가를 함께 주지 않는다면, 프론트에서 그대로 유지
+      try{
+        const arr = await getJSON('/api/symbols');
+        arr.forEach(q => upsertRow(q));
+      }catch(_){ /* ignore */ }
+    }, 1000);
+  }
+
+  // 초기화
+  (async function init(){
+    await loadSymbols();
+    await loadPortfolio();
+    connectWS();
+    // 안전 장치: 3초 지나도 첫 틱이 없으면 polling 시작
+    setTimeout(()=>{
+      if(Object.keys(state.prices).length===0){ state.logs.push('WS 지연 — polling 시작'); startPolling(); }
+    }, 3000);
+    // 포트폴리오는 3초마다 업데이트
+    setInterval(loadPortfolio, 3000);
+
+    // 버튼
+    document.getElementById('btn-buy').onclick = () => sendOrder('BUY');
+    document.getElementById('btn-sell').onclick = () => sendOrder('SELL');
+  })();
+})();
+</script>
+</body>
+</html>

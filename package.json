@@ -2,7 +2,7 @@
   "name": "trading-app",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",  // ← 이거 추가
+  "type": "module",  
   "scripts": {
     "start": "node index.js"
   },

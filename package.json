@@ -1,17 +1,12 @@
 {
   "name": "trading-app",
   "version": "1.0.0",
-  "description": "Trading app using yahoo-finance2",
   "main": "index.js",
-  "type": "commonjs",
+  "type": "module",  // ← 이거 추가
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "yahoo-finance2": "^2.13.3"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "license": "MIT"
+  }
 }

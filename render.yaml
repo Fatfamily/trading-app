@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: jusik-virtual-exchange
+    env: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false   # Render Postgres 연결 문자열을 여기 연결
+      - key: TOP_SYMBOLS
+        value: "005930.KS,000660.KS,035420.KS,AAPL,TSLA,MSFT,GOOGL,AMZN"

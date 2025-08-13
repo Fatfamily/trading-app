@@ -17,5 +17,7 @@
     "morgan": "^1.10.0",
     "pino": "^9.4.0",
     "pino-pretty": "^11.2.2"
-  }
+  },  "engines": {
+    "node": "20.x"
+  }  
 }

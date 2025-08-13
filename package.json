@@ -1,12 +1,11 @@
 {
   "name": "trading-app",
   "version": "1.0.0",
-  "main": "index.js",
-  "type": "module",  
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "yahoo-finance2": "^2.13.3"
+    "yahoo-finance2": "^2.0.0"
   }
 }

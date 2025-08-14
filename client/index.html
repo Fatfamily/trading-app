@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>주식 가상거래소 (KR)</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">주식 가상거래소</div>
+      <div class="search">
+        <input id="searchInput" placeholder="종목명 또는 코드 (예: 삼성전자, 005930)" />
+        <button id="searchBtn">검색</button>
+        <div id="searchResults" class="dropdown"></div>
+      </div>
+      <div class="auth">
+        <span id="userName">로그인 안됨</span>
+        <button id="loginBtn">로그인</button>
+        <button id="logoutBtn" style="display:none">로그아웃</button>
+      </div>
+    </header>
+    <main class="layout">
+      <aside class="left">
+        <section class="panel">
+          <h3>상위 10 종목 (국내)</h3>
+          <ul id="topList" class="list"></ul>
+        </section>
+        <section class="panel">
+          <h3>관심종목</h3>
+          <ul id="watchList" class="list"></ul>
+        </section>
+      </aside>
+      <section class="center">
+        <div id="chartArea" class="chart">차트 영역</div>
+        <div class="actions">
+          <button id="buyBtn">매수</button>
+          <button id="buyAllBtn">풀매수</button>
+          <button id="sellBtn">매도</button>
+          <button id="sellAllBtn">풀매도</button>
+        </div>
+        <section class="panel">
+          <h3>뉴스</h3>
+          <ul id="newsList" class="news"></ul>
+        </section>
+      </section>
+      <aside class="right">
+        <section class="panel">
+          <h3>보유 종목</h3>
+          <div>현금: <b id="cash">-</b> 원</div>
+          <ul id="portList" class="list"></ul>
+        </section>
+        <section class="panel">
+          <h3>로그</h3>
+          <ul id="logList" class="logs"></ul>
+        </section>
+      </aside>
+    </main>
+    <footer class="footer">
+      F1 도움말 · F2 홈 · F3 차트 · F4 관심 · F5 보유 · F6 로그 · F7 차트(관심/보유 전환) · F8 뉴스
+    </footer>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="ctxMenu" class="ctx-menu" style="display:none">
+    <div data-action="watch-add">관심종목 등록</div>
+    <div data-action="watch-remove">관심종목 해제</div>
+    <hr/>
+    <div data-action="buy">매수</div>
+    <div data-action="buy-all">풀매수</div>
+    <div data-action="sell">매도</div>
+    <div data-action="sell-all">풀매도</div>
+  </div>
+
+  <!-- Simple Login Modal -->
+  <div id="loginModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>로그인 / 회원가입</h3>
+      <input id="email" placeholder="이메일" />
+      <input id="password" placeholder="비밀번호 (6자 이상)" type="password"/>
+      <input id="displayName" placeholder="표시 이름 (회원가입시)" />
+      <div class="modal-actions">
+        <button id="doLogin">로그인</button>
+        <button id="doRegister">회원가입</button>
+        <button id="closeModal">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

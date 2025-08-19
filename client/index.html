@@ -1,0 +1,55 @@
+
+<!doctype html><html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>주식 가상거래소 (KR)</title>
+<link rel="stylesheet" href="./styles.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="header">
+  <input id="q" class="input" placeholder="종목명 또는 코드 (예: 삼성전자, 005930)"/>
+  <button id="btnSearch" class="btn">검색</button>
+  <div style="flex:1"></div>
+  <input id="email" class="input" placeholder="email"/><input id="pw" class="input" type="password" placeholder="password"/>
+  <button id="btnJoin" class="btn ghost">회원가입</button>
+  <button id="btnLogin" class="btn primary">로그인</button>
+  <span class="badge">단축키: Alt+1 홈, Alt+2 차트, Alt+3 관심, Alt+4 보유, Alt+5 뉴스</span>
+</div>
+
+<div class="layout">
+  <div class="panel">
+    <div class="row"><b>상위 10</b><span id="polling" class="badge">업데이트 대기</span></div>
+    <div id="list" class="left-list"></div>
+    <h4>관심종목</h4>
+    <div id="fav" class="left-list"></div>
+  </div>
+
+  <div class="panel">
+    <div class="row"><b id="title">종목을 선택하세요</b>
+      <button id="btnBuy" class="btn">매수</button>
+      <button id="btnBuyAll" class="btn">풀매수</button>
+      <button id="btnSell" class="btn">매도</button>
+      <button id="btnSellAll" class="btn">풀매도</button>
+      <button id="btnWatch" class="btn ghost">관심등록</button>
+    </div>
+    <div class="row"><span id="now" class="badge">-</span><span id="chg" class="badge">-</span></div>
+    <canvas id="chart" class="chart"></canvas>
+    <div class="panel" style="margin-top:12px;">
+      <div class="row"><b>뉴스</b></div>
+      <div id="news" class="news"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row"><b>보유 & 잔고</b><span id="cash" class="badge">-</span></div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th align="left">종목</th><th align="right">수량</th><th align="right">평단</th></tr></thead>
+      <tbody id="hold"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="./main.js"></script>
+</body></html>

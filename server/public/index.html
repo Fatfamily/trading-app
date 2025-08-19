@@ -1,0 +1,221 @@
+
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KR Trading App</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/modern-css-reset/dist/reset.min.css">
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif; background:#0b0f1a; color:#eee; }
+    header { display:flex; gap:12px; align-items:center; padding:12px; border-bottom:1px solid #1c2540; }
+    input, button { padding:8px 10px; border-radius:8px; border:1px solid #334; background:#111a2b; color:#eee; }
+    button { cursor:pointer; }
+    .wrap { display:grid; grid-template-columns: 320px 1fr 360px; gap:12px; padding:12px; height: calc(100vh - 60px); }
+    .card { background:#0f1526; border:1px solid #1c2540; border-radius:16px; padding:12px; overflow:auto; }
+    h2 { margin:0 0 8px; font-size:16px; color:#a6b0cf; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:8px; border-bottom:1px solid #1c2540; }
+    tr:hover { background:#121a30; }
+    .price-up { color:#6ee7b7; } .price-down { color:#fda4af; }
+    .ctx { position:fixed; display:none; background:#101726; border:1px solid #2b3a67; border-radius:12px; min-width:180px; z-index:1000; }
+    .ctx button { display:block; width:100%; text-align:left; background:none; border:none; padding:10px 12px; }
+    .ctx button:hover { background:#16213a; }
+    #chart { height:300px; }
+    .news a { color:#93c5fd; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>⚡ KR Trading</strong>
+    <input id="email" placeholder="이메일" />
+    <input id="password" placeholder="비밀번호" type="password" />
+    <button id="btnRegister">회원가입</button>
+    <button id="btnLogin">로그인</button>
+    <button id="btnLogout" style="display:none;">로그아웃</button>
+    <span id="loginInfo"></span>
+    <input id="search" placeholder="종목명 또는 코드 (예: 삼성전자/005930)" style="margin-left:auto; width:320px;" />
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <h2>관심종목</h2>
+      <table id="watchTable"><thead><tr><th>코드</th><th>이름</th><th>가격</th><th>등락</th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section class="card">
+      <h2>차트</h2>
+      <canvas id="chart"></canvas>
+      <div class="news"><h2>뉴스</h2><ul id="news"></ul></div>
+    </section>
+
+    <section class="card">
+      <h2>보유현황</h2>
+      <div>잔고: <span id="cash">-</span> 원</div>
+      <table id="holdTable"><thead><tr><th>코드</th><th>수량</th><th>평단</th></tr></thead><tbody></tbody></table>
+      <button id="btnReset">계좌 초기화(₩10,000,000)</button>
+    </section>
+  </div>
+
+  <div class="ctx" id="ctxMenu">
+    <button data-action="watch-add">관심등록</button>
+    <button data-action="watch-remove">관심해제</button>
+    <button data-action="buy">매수</button>
+    <button data-action="buy-all">풀매수</button>
+    <button data-action="sell">매도</button>
+    <button data-action="sell-all">풀매도</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script>
+    const api = (p, opt={}) => fetch(p, { ...opt, headers: { 'Content-Type': 'application/json', ...(token?{Authorization:'Bearer '+token}:{}) } });
+    let token = localStorage.getItem('token') || '';
+    let selected = { code:'005930', name:'삼성전자' };
+    let prices = []; // chart buffer
+    let ctxCode = null;
+
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+    const btnRegister = document.getElementById('btnRegister');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    const loginInfo = document.getElementById('loginInfo');
+    const search = document.getElementById('search');
+    const newsList = document.getElementById('news');
+    const cashEl = document.getElementById('cash');
+
+    function setLoggedIn(user){
+      if (user){
+        btnLogout.style.display='inline-block';
+        loginInfo.textContent = user.email;
+        btnLogin.style.display='none'; btnRegister.style.display='none';
+      } else {
+        btnLogout.style.display='none'; loginInfo.textContent='';
+        btnLogin.style.display='inline-block'; btnRegister.style.display='inline-block';
+        localStorage.removeItem('token'); token='';
+      }
+    }
+    setLoggedIn(token?{}:null);
+
+    btnRegister.onclick=async()=>{
+      const r = await api('/api/auth/register', {method:'POST', body:JSON.stringify({email:email.value, password:password.value})});
+      const j = await r.json(); if(j.token){ token=j.token; localStorage.setItem('token', token); loadMe(); }
+      else alert(j.error||'error');
+    };
+    btnLogin.onclick=async()=>{
+      const r = await api('/api/auth/login', {method:'POST', body:JSON.stringify({email:email.value, password:password.value})});
+      const j = await r.json(); if(j.token){ token=j.token; localStorage.setItem('token', token); setLoggedIn({email:email.value}); loadMe(); }
+      else alert(j.error||'error');
+    };
+    btnLogout.onclick=()=>{ setLoggedIn(null); };
+
+    document.getElementById('btnReset').onclick=async()=>{
+      if(!confirm('정말 초기화할까요?')) return;
+      const r = await api('/api/account/reset', {method:'POST'});
+      const j = await r.json(); if(j.ok){ loadMe(); } else alert(j.error||'error');
+    };
+
+    // Context menu
+    const ctxMenu = document.getElementById('ctxMenu');
+    document.addEventListener('click',()=>ctxMenu.style.display='none');
+    document.getElementById('watchTable').addEventListener('contextmenu', (e)=>{
+      e.preventDefault();
+      const tr = e.target.closest('tr[data-code]');
+      if(!tr) return;
+      ctxCode = tr.dataset.code;
+      ctxMenu.style.display='block';
+      ctxMenu.style.left=e.pageX+'px'; ctxMenu.style.top=e.pageY+'px';
+    });
+    ctxMenu.addEventListener('click', async (e)=>{
+      const action = e.target.dataset.action; if(!action||!ctxCode) return;
+      const qty = Number(prompt('수량?', '1'));
+      if (['buy','sell'].includes(action) && (!qty || qty<=0)) return;
+      if (action==='watch-add') await api('/api/account/watchlist/add',{method:'POST', body:JSON.stringify({code:ctxCode})});
+      if (action==='watch-remove') await api('/api/account/watchlist/remove',{method:'POST', body:JSON.stringify({code:ctxCode})});
+      if (action==='buy') await api('/api/trade/order',{method:'POST', body:JSON.stringify({code:ctxCode, side:'BUY', qty})});
+      if (action==='buy-all'){ const p = await (await api('/api/stocks/price/'+ctxCode)).json(); const me = await (await api('/api/account/me')).json(); const qtyAll = Math.floor(me.user.balance / p.price); if(qtyAll>0) await api('/api/trade/order',{method:'POST', body:JSON.stringify({code:ctxCode, side:'BUY', qty: qtyAll})}); }
+      if (action==='sell') await api('/api/trade/order',{method:'POST', body:JSON.stringify({code:ctxCode, side:'SELL', qty})});
+      if (action==='sell-all'){ const me = await (await api('/api/account/me')).json(); const h = me.holdings.find(x=>x.code===ctxCode); if (h && h.qty>0) await api('/api/trade/order',{method:'POST', body:JSON.stringify({code:ctxCode, side:'SELL', qty: h.qty})}); }
+      loadMe();
+    });
+
+    // Search
+    search.addEventListener('keydown', async (e)=>{
+      if(e.key==='Enter'){
+        const q = search.value.trim();
+        if(!q) return;
+        let code = null, name = q;
+        if (/^\d{6}$/.test(q)) code = q;
+        else {
+          const r = await api('/api/stocks/search?q='+encodeURIComponent(q));
+          const arr = await r.json();
+          if(arr.length) { code = arr[0].code; name = arr[0].name; }
+        }
+        if(!code){ alert('종목을 찾지 못했습니다'); return; }
+        selected = { code, name };
+        prices = [];
+        loadNews();
+      }
+    });
+
+    // Chart
+    const chart = new Chart(document.getElementById('chart'), {
+      type:'line',
+      data:{ labels:[], datasets:[{ label:'가격', data:[] }] },
+      options:{ responsive:true, maintainAspectRatio:false, animation:false, scales:{ x:{ ticks:{display:false}}, y:{ beginAtZero:false } } }
+    });
+
+    async function pollPrice(){
+      const r = await api('/api/stocks/price/'+selected.code);
+      const j = await r.json();
+      if(j && j.price){
+        prices.push(j.price); if(prices.length>120) prices.shift();
+        chart.data.labels = prices.map((_,i)=>i+1);
+        chart.data.datasets[0].data = prices;
+        chart.update('none');
+        // 업데이트 watch table row for selected if exists
+      }
+    }
+
+    async function loadNews(){
+      newsList.innerHTML='';
+      const r = await api('/api/stocks/news/'+selected.code);
+      const items = await r.json();
+      items.forEach(n=>{
+        const li = document.createElement('li'); 
+        const a = document.createElement('a'); a.href=n.link; a.textContent=n.title; a.target='_blank';
+        const small = document.createElement('small'); small.textContent='  '+n.date;
+        li.appendChild(a); li.appendChild(small);
+        newsList.appendChild(li);
+      });
+    }
+
+    async function loadMe(){
+      if(!token) return;
+      const r = await api('/api/account/me'); const j = await r.json();
+      setLoggedIn({email:j.user.email});
+      cashEl.textContent = (j.user.balance).toLocaleString();
+      const tbody = document.querySelector('#watchTable tbody'); tbody.innerHTML='';
+      if (j.watchlist.length){
+        const pr = await (await api('/api/stocks/prices', {method:'POST', body:JSON.stringify({codes:j.watchlist})})).json();
+        pr.forEach(s=>{
+          const tr = document.createElement('tr'); tr.dataset.code=s.code;
+          tr.innerHTML = `<td>${s.code}</td><td>${s.name}</td><td class="${s.diff>=0?'price-up':'price-down'}">${s.price.toLocaleString()}</td><td>${s.rate}%</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+      const hbody = document.querySelector('#holdTable tbody'); hbody.innerHTML='';
+      j.holdings.forEach(h=>{
+        const tr = document.createElement('tr'); tr.innerHTML = `<td>${h.code}</td><td>${h.qty}</td><td>${Number(h.avg_price).toLocaleString()}</td>`;
+        hbody.appendChild(tr);
+      });
+    }
+
+    // Initial
+    loadNews();
+    loadMe();
+    setInterval(pollPrice, 1200);
+  </script>
+</body>
+</html>

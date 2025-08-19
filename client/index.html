@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>주식 가상거래소 (KR)</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">가상거래소</div>
+    <div class="search">
+      <input id="searchInput" placeholder="종목명 또는 코드 (예: 삼성전자, 005930)" />
+      <button id="searchBtn">검색</button>
+      <div id="searchResults" class="dropdown"></div>
+    </div>
+    <div class="auth">
+      <input id="email" placeholder="email" />
+      <input id="password" type="password" placeholder="password" />
+      <button id="registerBtn">회원가입</button>
+      <button id="loginBtn">로그인</button>
+      <span id="userEmail"></span>
+    </div>
+  </div>
+  <div class="main">
+    <div class="left">
+      <h3>상위 10 (KOSPI)</h3>
+      <ul id="topList"></ul>
+      <h3>관심종목</h3>
+      <ul id="watchList"></ul>
+    </div>
+    <div class="center">
+      <canvas id="chart" height="200"></canvas>
+      <div class="quote" id="quoteBox">종목을 선택하세요</div>
+      <div class="actions">
+        <button id="buyBtn">매수</button>
+        <button id="buyAllBtn">풀매수</button>
+        <button id="sellBtn">매도</button>
+        <button id="sellAllBtn">풀매도</button>
+      </div>
+      <div id="news"></div>
+    </div>
+    <div class="right">
+      <h3>보유/잔고</h3>
+      <div id="cash"></div>
+      <table>
+        <thead><tr><th>종목</th><th>수량</th><th>평단</th></tr></thead>
+        <tbody id="holdings"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="footer">
+    F1 도움말 · F2 홈 · F3 차트 · F4 관심종목 · F5 보유 · F6 로그 · F7 차트2 · F8 뉴스
+  </div>
+  <ul id="ctx" class="ctx hidden">
+    <li data-act="watch">관심종목 등록</li>
+    <li data-act="unwatch">관심종목 해제</li>
+    <li data-act="buy">매수</li>
+    <li data-act="buyAll">풀매수</li>
+    <li data-act="sell">매도</li>
+    <li data-act="sellAll">풀매도</li>
+  </ul>
+  <script src="./main.js"></script>
+</body>
+</html>

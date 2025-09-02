@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Kiwoom-like subtle gray UI */
+body { @apply bg-slate-100; }

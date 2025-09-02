@@ -7,11 +7,18 @@ COPY server ./server
 
 WORKDIR /app/client
 
-# 👇 vite와 @vitejs/plugin-react 설치 (devDependencies)
-RUN npm install -D @vitejs/plugin-react vite
+# 👇 package.json, package-lock.json 먼저 복사
+COPY client/package*.json ./
+
+# 패키지 설치
+RUN npm install
+
+# vite & plugin-react 추가 설치
+RUN npm install -D vite @vitejs/plugin-react
 
 # 클라이언트 빌드
-RUN npm install && npm run build
+COPY client ./
+RUN npm run build
 
 # 빌드 결과를 서버 public으로 이동
 RUN rm -rf /app/server/public && cp -r dist /app/server/public

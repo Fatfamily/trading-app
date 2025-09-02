@@ -6,7 +6,7 @@ import compression from 'compression';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import cheerio from 'cheerio';
-import LRU from 'lru-cache';
+import { LRUCache } from 'lru-cache';   // ✅ 수정된 부분
 import path from 'path';
 import { fileURLToPath } from 'url';
 import iconv from 'iconv-lite';
@@ -51,8 +51,11 @@ async function initTables(){
 }
 initTables().catch(console.error);
 
-// Simple LRU cache (in-memory)
-const cache = new LRU({ max: 500, ttl: 1000 * 60 * 60 }); // 1h
+// ✅ LRU 캐시 인스턴스
+const cache = new LRUCache({
+  max: 500,
+  ttl: 1000 * 60 * 60  // 1시간 TTL
+});
 
 async function fetchText(url) {
   const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 KR Trading Demo' }});
@@ -87,30 +90,25 @@ const POPULAR = [
 ];
 
 async function getQuoteRemote(code) {
-  // Defensive cache
   const cacheKey = `remote:${code}`;
   const hit = cache.get(cacheKey);
   if (hit) return hit;
 
-  // Naver finance pages
   try {
     const url = `https://finance.naver.com/item/main.nhn?code=${code}`;
     const html = await fetchText(url);
     const $ = cheerio.load(html);
 
-    // Try meta description
-    const og = $('meta[property="og:description"]').attr('content') || '';
     let price = null;
+    const og = $('meta[property="og:description"]').attr('content') || '';
     const m = og.match(/현재가\s*([0-9,]+)원/);
     if (m && m[1]) price = parseNum(m[1]);
 
-    // fallback: chart area blind text
     if (!price) {
       const txt = $('#_nowVal').text() || $('#chart_area .rate_info .today .blind').text();
       price = parseNum(txt);
     }
 
-    // mobile endpoint fallback
     if (!price) {
       try {
         const murl = `https://m.stock.naver.com/api/stock/${code}/basic`;
@@ -122,7 +120,7 @@ async function getQuoteRemote(code) {
 
     const name = $('title').text().split(':')[0].trim() || POPULAR.find(x=>x.code===code)?.name || '종목';
     const res = { code, name, price };
-    cache.set(cacheKey, res, { ttl: 1000 * 10 }); // 10s
+    cache.set(cacheKey, res, { ttl: 1000 * 10 }); // 10초 캐시
     return res;
   } catch(e) {
     console.error('getQuoteRemote err', e);
@@ -155,7 +153,6 @@ async function getQuote(code) {
   } finally {
     client.release();
   }
-  // fallback fetch remote and upsert
   const q = await getQuoteRemote(code);
   if (q.price != null) await upsertQuoteDb(q);
   return q;
@@ -178,13 +175,17 @@ async function fetchNewsAndStore(code) {
       const source = $(tr).find('td.info').text().trim();
       if (title) items.push({ title, url: href, source, time: when });
     }
-    // upsert into DB (unique on code+url)
     const client = await pool.connect();
     try {
       for (const it of items.slice(0,20)) {
         try {
-          await client.query(`INSERT INTO news(code,title,url,source,time_text,fetched_at) VALUES($1,$2,$3,$4,$5,now()) ON CONFLICT (code,url) DO NOTHING`, [code, it.title, it.url, it.source, it.time]);
-        } catch(e){ /* ignore duplicates/errors per-item */ }
+          await client.query(
+            `INSERT INTO news(code,title,url,source,time_text,fetched_at) 
+             VALUES($1,$2,$3,$4,$5,now()) 
+             ON CONFLICT (code,url) DO NOTHING`,
+            [code, it.title, it.url, it.source, it.time]
+          );
+        } catch(e){ /* ignore per-item */ }
       }
     } finally {
       client.release();
@@ -288,7 +289,10 @@ app.post('/api/favorites', authMiddleware, async (req, res) => {
   if (!code) return res.status(400).json({ error: 'missing_code' });
   const client = await pool.connect();
   try {
-    await client.query('INSERT INTO favorites(user_id,code,name) VALUES($1,$2,$3) ON CONFLICT (user_id,code) DO UPDATE SET name=EXCLUDED.name', [req.user.id, code, name || null]);
+    await client.query(
+      'INSERT INTO favorites(user_id,code,name) VALUES($1,$2,$3) ON CONFLICT (user_id,code) DO UPDATE SET name=EXCLUDED.name',
+      [req.user.id, code, name || null]
+    );
     res.json({ ok: true });
   } catch(e) {
     console.error('fav err', e);
@@ -312,7 +316,7 @@ app.delete('/api/favorites', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/top -> list with latest prices (from DB if present)
+// GET /api/top
 app.get('/api/top', async (req, res) => {
   try {
     const client = await pool.connect();
@@ -342,19 +346,19 @@ app.get('/api/search', async (req, res) => {
   try {
     const url = `https://ac.finance.naver.com/ac?q=${encodeURIComponent(q)}&q_enc=utf-8&t_koreng=1&st=111&r_fmt=json`;
     const txt = await fetchText(url);
-    const jsonStr = txt.replace(/^.*?\\(({.*})\\).*$/s, '$1');
+    const jsonStr = txt.replace(/^.*?\(({.*})\).*$/s, '$1');
     const obj = JSON.parse(jsonStr);
     const list = [];
     for (const it of (obj.items?.[0] || [])) {
       const name = it[0][0];
       const code = it[1][0];
-      if (/^\\d{6}$/.test(code)) list.push({ code, name });
+      if (/^\d{6}$/.test(code)) list.push({ code, name });
     }
     cache.set(cacheKey, list, { ttl: 1000 * 60 * 10 });
     res.json(list);
   } catch (e) {
-    const qq = q.replace(/\\s/g,'').toLowerCase();
-    const list = POPULAR.filter(x => x.name.replace(/\\s/g,'').toLowerCase().includes(qq) || x.code.includes(qq));
+    const qq = q.replace(/\s/g,'').toLowerCase();
+    const list = POPULAR.filter(x => x.name.replace(/\s/g,'').toLowerCase().includes(qq) || x.code.includes(qq));
     res.json(list);
   }
 });
@@ -362,7 +366,7 @@ app.get('/api/search', async (req, res) => {
 // GET /api/quote?code=005930
 app.get('/api/quote', async (req, res) => {
   const code = (req.query.code || '').trim();
-  if (!/^\\d{6}$/.test(code)) return res.status(400).json({ error: 'invalid_code' });
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'invalid_code' });
   try {
     const q = await getQuote(code);
     res.json(q);
@@ -374,16 +378,18 @@ app.get('/api/quote', async (req, res) => {
 // GET /api/news?code=005930
 app.get('/api/news', async (req, res) => {
   const code = (req.query.code || '').trim();
-  if (!/^\\d{6}$/.test(code)) return res.status(400).json({ error: 'invalid_code' });
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'invalid_code' });
   try {
     const client = await pool.connect();
     try {
-      const r = await client.query('SELECT title,url,source,time_text,fetched_at FROM news WHERE code=$1 ORDER BY fetched_at DESC LIMIT 50', [code]);
+      const r = await client.query(
+        'SELECT title,url,source,time_text,fetched_at FROM news WHERE code=$1 ORDER BY fetched_at DESC LIMIT 50',
+        [code]
+      );
       if (r.rowCount > 0) {
         return res.json(r.rows);
       }
     } finally { client.release(); }
-    // if DB empty, fetch remote and store
     const items = await fetchNewsAndStore(code);
     res.json(items);
   } catch (e) {
@@ -402,21 +408,18 @@ async function updateAllQuotes() {
       const favRows = await client.query('SELECT DISTINCT code FROM favorites');
       const favCodes = favRows.rows.map(r=>r.code);
       const codes = Array.from(new Set([...POPULAR.map(p=>p.code), ...favCodes]));
-      // fetch in sequence to be safer (avoid parallel hammering); you can increase concurrency if needed
       for (const code of codes) {
         try {
           const q = await getQuoteRemote(code);
           if (q && q.price != null) await upsertQuoteDb(q);
-        } catch(e){
-          // ignore per-code errors
-        }
+        } catch(e){ /* ignore per-code errors */ }
       }
     } finally { client.release(); }
   } catch(e){ console.error('updateAllQuotes err', e); }
   updating = false;
 }
 
-// News updater (runs less frequently)
+// News updater
 let updatingNews = false;
 async function updateNewsForTracked() {
   if (updatingNews) return;
@@ -436,14 +439,14 @@ async function updateNewsForTracked() {
 }
 
 // Start background tasks
-setInterval(updateAllQuotes, 1000); // every 1s
-setInterval(updateNewsForTracked, 1000 * 60); // every 60s
+setInterval(updateAllQuotes, 1000);       // 1초마다 시세 갱신
+setInterval(updateNewsForTracked, 60000); // 60초마다 뉴스 갱신
 
-// fallback to index.html (SPA-like)
+// fallback to index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`Server listening on :${PORT}`);
+  console.log('Server listening on', PORT);
 });

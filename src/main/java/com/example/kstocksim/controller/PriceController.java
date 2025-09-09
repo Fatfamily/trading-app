@@ -1,42 +1,36 @@
 package com.example.kstocksim.controller;
 
-import com.example.kstocksim.service.PriceService;
-import jakarta.validation.constraints.Pattern;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/price")
-@Validated
 public class PriceController {
 
-    private final PriceService priceService;
+    @GetMapping("/price")
+    public Map<String, Object> getPrice(@RequestParam String code) throws IOException {
+        Map<String, Object> result = new HashMap<>();
 
-    public PriceController(PriceService priceService) {
-        this.priceService = priceService;
-    }
+        // 네이버 금융 종목 페이지 주소 (code는 6자리 숫자 종목코드)
+        String url = "https://finance.naver.com/item/main.naver?code=" + code;
 
-    @GetMapping("/{code}")
-    public ResponseEntity<?> one(@PathVariable @Pattern(regexp="\d{6}") String code) {
-        BigDecimal px = priceService.getPrice(code);
-        return ResponseEntity.ok(Map.of("code", code, "price", px));
-    }
+        Document doc = Jsoup.connect(url).get();
+        Element priceEl = doc.selectFirst(".no_today .blind");
 
-    @GetMapping("/batch")
-    public ResponseEntity<?> batch(@RequestParam String codes) {
-        String[] arr = codes.split(",");
-        Map<String,Object> out = new HashMap<>();
-        for (String c : arr) {
-            c = c.trim();
-            if (c.matches("\\d{6}")) {
-                out.put(c, Map.of("price", priceService.getPrice(c)));
-            }
+        if (priceEl != null) {
+            result.put("price", priceEl.text());
+        } else {
+            result.put("price", "N/A");
         }
-        return ResponseEntity.ok(out);
+
+        result.put("code", code);
+        return result;
     }
 }

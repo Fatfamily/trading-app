@@ -1,0 +1,27 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/kstocksim;MODE=MySQL;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    driverClassName: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.format_sql: true
+  h2:
+    console:
+      enabled: true
+
+app:
+  simulator:
+    initialCash: 100000000
+  naver:
+    # primary endpoint for current quote (unofficial; may change)
+    itemSummaryUrl: "https://api.finance.naver.com/service/itemSummary.nhn?itemcode=%s"
+    # fallback history endpoint (use last closePrice as proxy)
+    historyUrl: "https://m.stock.naver.com/api/stock/%s/price?pageSize=1&page=1"
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

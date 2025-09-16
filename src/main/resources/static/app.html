@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>K-Stock Simulator</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">K-모의투자</div>
+    <div style="flex:1"></div>
+    <div><button class="btn" onclick="logout()">로그아웃</button></div>
+  </div>
+
+  <div class="container">
+    <div class="left">
+      <div class="panel">
+        <div class="panel-head">관심종목</div>
+        <table id="wl"><tbody></tbody></table>
+        <div style="margin-top:8px">
+          <input id="codeInput" placeholder="종목코드 6자리" />
+          <button class="btn" onclick="addToWatch()">추가</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">뉴스</div>
+        <div id="news">(뉴스 로딩)</div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="panel">
+        <div class="panel-head" id="title">차트</div>
+        <canvas id="chart" width="600" height="240"></canvas>
+        <div style="margin-top:8px">
+          수량 <input id="qty" value="1" style="width:80px" /> 
+          <select id="side"><option>BUY</option><option>SELL</option></select>
+          <button class="btn" onclick="placeOrder()">주문</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">포트폴리오</div>
+        <pre id="pf"></pre>
+      </div>
+      <div class="panel">
+        <div class="panel-head">로그</div>
+        <pre id="log" style="height:120px; overflow:auto"></pre>
+      </div>
+    </div>
+  </div>
+
+<script src="/app.js"></script>
+</body>
+</html>

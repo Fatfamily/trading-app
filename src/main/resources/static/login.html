@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>로그인 - K-Stock</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h2>K-Stock Simulator</h2>
+      <input id="username" placeholder="아이디" />
+      <input id="password" type="password" placeholder="비밀번호" />
+      <button class="btn" onclick="doLogin()">로그인</button>
+      <button class="btn" onclick="doRegister()">회원가입</button>
+      <div id="msg" class="error" style="display:none"></div>
+    </div>
+  </div>
+<script>
+async function doLogin(){
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  const r = await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body: JSON.stringify({username:u,password:p})});
+  if(r.ok) window.location.href = '/app.html';
+  else { document.getElementById('msg').innerText='로그인 실패'; document.getElementById('msg').style.display='block'; }
+}
+async function doRegister(){
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  const r = await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body: JSON.stringify({username:u,password:p})});
+  if(r.ok) window.location.href = '/app.html';
+  else { document.getElementById('msg').innerText='회원가입 실패'; document.getElementById('msg').style.display='block'; }
+}
+</script>
+</body>
+</html>
